@@ -6,4 +6,12 @@ This is a PyTorch(0.4.1) implementation of [Depth Estimation via Affinity Learne
 
 Note: we fix some bugs in [original code](https://github.com/XinJCheng/CSPN/issues/9).
 
- ![avatar](https://lh3.googleusercontent.com/Zf2crlTrBsA3VpK5N7QqKMeMZPXde55oFvc4S2axcnS3Tda8XYe6MA3pt4S39W_ASAVSXD1LTZzwvoB7WHbAWG5jxbPIy2e8NyM9bhuiVWKFODDd94DEjl0TzUXYP6bMYAIBqLOSvPsjuCBlGSHuJ7QBNiAXSNp00iqENIwl7_MwYTXForuy3MsC-IEwj8KIEfN6x45PYV9SFEIkPhc16WN_u3QOoA6cFb1yE8iugTIyOVK0l9SNqbIudwU0pr5iQMRyThHI6a0UXYY_6VbcMal0I5XUEm0z8pnBv_W417f5sHpTNps1qH-jSNZZLCLlbe6tXm6Q_M8xpf96s-3VZzpKyICY-j3v-dVMYAsmkc7NlczHsxWQ1T4EJNNDaNIgM3iQipxDNzUo9nno7f4ZQLMbp_3MuJW5XFc32qnCcdIfe63oL99sf9SEa-tBrsgqZAlZ-wrvGh1VI03rrccOQTJ9ATak3D5q5o3cJ9ACby1UFNBB532fTfPMGSlbdTAI8XnbOslahIDdv7qJmt3rl2REEJpom8PFiAVkfCcH9VzBaCwTZ-CIg62hw3BnNJoJG1MW9eimhmUdbzzMn7KQYDa3kztUuyGRkpnlRSmT_A4oGERnZNgu3z9rB44uyqaPG0ivNOxochQz5kboNFl__NM=w877-h770-no)
+### Reselt
+We test CSPN for depth completion in NYU Depth dataset. We use 500 sparse samples.
+
+ Method |   rml  | rmse  | log10 | Delta1 | Delta2 | Delta3 
+ :-------| :------: | :------: | :------: | :------: | :------: | :------: 
+ CSPN   | 0.016  | 0.117 | - | 0.992| 0.999 | 1.000
+ CSPN_ours  | 0.023 | 0.152 | 0.010 | 0.988 | 0.997 | 0.999
+ 
+ ![avatar](https://lh3.googleusercontent.com/P0M0bgTVrbQduZDkZisVJYe9rIjo0avKR530T1yfLnBRCNHCSOEUXcmpAA5SoShwhX5GFooLb0geFLLZTyp99HbQz0UoFma8dFrC-mm3QUMPBG41PD1VxhRIDbz5Z8W1febE7f_oIJ4HXEDv_W6D-vD1B1cmmQMD9ZUSw5AeZYAHJnoFa7OJf3VvnXaBLYZM3TAlSbAOSfuGaqF9tTPMJYBG6cCPIojQh88t9XhQ0pGDBvXpbPJliChz1DEYiyp1rYbSa82sKbmdb84Ap3FqQBqb3yHCwXBeA1UXQIL0cS64ycf-fuJJ-HZkPyRAV29R0j89kngw6cJaFyzyQ-WPwaSwb4CF3AA_9fv7dmWArsS2vqby75tI-Z6T5zUnF3jnEPMHWSstZjSePfQSF73LLF-3sali9klAKltVFRe1nlIYaq2OyMuAYx_KKWoa-nqqrgtAy6PoBriR8B-mouYiD-Nai6z5GQ3wiuJWnbuWD4hoEW-kZMnl8D1VEHSnlgdLKaQLDUug0zkPEnMEKESBSKqyadVO9gDzeNsH3-Wq5en4ulmvWGGebv2BWXkmBlRAkSd7KvvASk8uyLx2hX2z5jphhPx3ZF5AU9ocLRx-rNXQAWj72LdW6c0-xttIZizHBkIDpMmrhKG0BStToXvpg5A=w843-h1264-no)
