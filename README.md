@@ -7,7 +7,7 @@ This is a PyTorch(0.4.1) implementation of [Depth Estimation via Affinity Learne
 Note: we fix some bugs in [original code](https://github.com/XinJCheng/CSPN/issues/9).
 
 ### Reselt
-We test CSPN for depth completion in NYU Depth dataset. We use 500 sparse samples.
+We test CSPN for depth completion in NYU Depth dataset and use 500 sparse samples. 
 
  Method |   rml  | rmse  | log10 | Delta1 | Delta2 | Delta3 
  :-------| :------: | :------: | :------: | :------: | :------: | :------: 
