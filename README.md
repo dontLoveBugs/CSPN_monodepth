@@ -9,7 +9,7 @@ Note: we fix some bugs in [original code](https://github.com/XinJCheng/CSPN/issu
 ### Reselt
 We use 2 Titan X to train CSPN for depth completion and monocular depth estimation.  
 
-#### Depth Completion
+#### Monocular Depth Estimation
 
  Method |   rml  | rmse  | log10 | Delta1 | Delta2 | Delta3 
  :-------| :------: | :------: | :------: | :------: | :------: | :------: 
@@ -17,8 +17,7 @@ We use 2 Titan X to train CSPN for depth completion and monocular depth estimati
  
  ![avatar](https://lh3.googleusercontent.com/lA1zTX-yZPJWDW9F4LfR9vplXpJkFTW6wFPyZ0Y-QrDZORrh64kbfJ1U9yUsmQA22ALn0JoaTzTuFokwc7cJjqa2nUx2kMgqiT0yTs9yU-AS_Kv2jvuW8ZkK6FnlAIlKrRUgdPr4VIpmp35X0Zpu4uieolRGbOlfnECbSXiTPrwnCmDQejKR7WIcKa6YkTdkMLIxAOBN27HWbcfFnhQaTcGENmlSSSZS0g6o0N8trc_1QTKdFstT2kYOI_lWrHBSSeB87Omj3z7TmRa_c9TC30euua0NI2dHA58qeQoNs9Tf1yCadO7lW493oz1IsdHwVIl0ecybX2IikxZt0d8Y14QlxTJaY6RHZrazWe5H0nzdKIwa-KhwrQd38Eilq76rPRJGaLG7kcgWD_b0NxKSS7AiyErOhyxDlRmHWQRfCvyqTrt-_qK-5D-WWqgouW81IaYSOvhuKgZwsSqdNHcan5tb-DTMyM4A9vE-_P1GJNM-uePsdYnNLP4vPTKzCmxrKg47c6LCrKD-1asuPV2fxvzOPH5qsVApyIeslVVC_bTZbYn9tmKbDoDlETZjAAJp5vpPjZ-5oijJqoACIbLw-XU1N6d5mkxKp_T6SaRDYvIAraSct-Uz3a6XzHRoqSI5rgw_K38zLqfFmyDSS-gGYaHx=w602-h1203-no)
  
-
-#### Monocular Depth Estimation
+#### Depth Completion
 
 We test CSPN for depth completion in NYU Depth dataset and use 500 sparse samples. 
 
