@@ -1,8 +1,10 @@
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 """
-Created on Mon Feb  5 16:19:25 2018
-@author: Xinjing Cheng
-@email : chengxinjing@baidu.com
+@Time    : 2019-05-19 16:44
+@Author  : Wang Xin
+@Email   : wangxin_buaa@163.com
+@File    : utils.py
 """
 
 import torch
@@ -12,7 +14,7 @@ import string
 
 
 # update pretrained model params according to my model params
-def update_model(my_model, pretrained_dict):
+def load_model_dict(my_model, pretrained_dict):
     my_model_dict = my_model.state_dict()
     # 1. filter out unnecessary keys
     pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in my_model_dict}
@@ -20,18 +22,6 @@ def update_model(my_model, pretrained_dict):
     my_model_dict.update(pretrained_dict)
 
     return my_model_dict
-
-
-# dont know why my offline saved model has 'module.' in front of all key name
-def remove_moudle(remove_dict):
-    for k, v in remove_dict.items():
-        if string.find(k, 'module') != -1:
-            print("==> model dict with addtional module, remove it...")
-            removed_dict = {k[7:]: v for k, v in remove_dict.items()}
-        else:
-            removed_dict = remove_dict
-        break
-    return removed_dict
 
 
 def update_conv_spn_model(out_dict, in_dict):
