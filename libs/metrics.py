@@ -21,7 +21,6 @@ class Result(object):
         self.irmse, self.imae = 0, 0
         self.mse, self.rmse, self.mae = 0, 0, 0
         self.absrel, self.lg10 = 0, 0
-        self.squared_rel, self.silog = 0, 0
         self.delta1, self.delta2, self.delta3 = 0, 0, 0
         self.data_time, self.gpu_time = 0, 0
 
@@ -31,18 +30,16 @@ class Result(object):
         self.irmse, self.imae = np.inf, np.inf
         self.mse, self.rmse, self.mae = np.inf, np.inf, np.inf
         self.absrel, self.lg10 = np.inf, np.inf
-        self.squared_rel, self.silog = np.inf, np.inf
         self.delta1, self.delta2, self.delta3 = 0, 0, 0
         self.data_time, self.gpu_time = 0, 0
 
         self.loss = np.inf
 
-    def update(self, irmse, imae, mse, rmse, mae, absrel, squared_rel, lg10, silog, delta1, delta2, delta3,
+    def update(self, irmse, imae, mse, rmse, mae, absrel, lg10, delta1, delta2, delta3,
                gpu_time, data_time, loss=None):
         self.irmse, self.imae = irmse, imae
         self.mse, self.rmse, self.mae = mse, rmse, mae
         self.absrel, self.lg10 = absrel, lg10
-        self.squared_rel, self.silog = squared_rel, silog
         self.delta1, self.delta2, self.delta3 = delta1, delta2, delta3
         self.data_time, self.gpu_time = data_time, gpu_time
 
@@ -57,38 +54,28 @@ class Result(object):
         if h != output.size(2) or w != output.size(3):
             output = F.upsample(input=output, size=(h, w), mode='bilinear', align_corners=True)
 
-        valid_mask = target > 0.1
+        valid_mask = target>0
+        output = output[valid_mask]
+        target = target[valid_mask]
 
-        # convert from meters to mm
-        output_mm = 1e3 * output[valid_mask]
-        target_mm = 1e3 * target[valid_mask]
-
-        abs_diff = (output_mm - target_mm).abs()
+        abs_diff = (output - target).abs()
 
         self.mse = float((torch.pow(abs_diff, 2)).mean())
         self.rmse = math.sqrt(self.mse)
         self.mae = float(abs_diff.mean())
-        self.lg10 = float((log10(output_mm) - log10(target_mm)).abs().mean())
-        self.absrel = float((abs_diff / target_mm).mean())
-        self.squared_rel = float(((abs_diff / target_mm) ** 2).mean())
+        self.lg10 = float((log10(output) - log10(target)).abs().mean())
+        self.absrel = float((abs_diff / target).mean())
 
-        maxRatio = torch.max(output_mm / target_mm, target_mm / output_mm)
+        maxRatio = torch.max(output / target, target / output)
         self.delta1 = float((maxRatio < 1.25).float().mean())
         self.delta2 = float((maxRatio < 1.25 ** 2).float().mean())
         self.delta3 = float((maxRatio < 1.25 ** 3).float().mean())
         self.data_time = 0
         self.gpu_time = 0
 
-        # silog uses meters
-        err_log = torch.log(target[valid_mask]) - torch.log(output[valid_mask])
-        normalized_squared_log = (err_log ** 2).mean()
-        log_mean = err_log.mean()
-        self.silog = math.sqrt(normalized_squared_log - log_mean * log_mean) * 100
-
-        # convert from meters to km
-        inv_output_km = (1e-3 * output[valid_mask]) ** (-1)
-        inv_target_km = (1e-3 * target[valid_mask]) ** (-1)
-        abs_inv_diff = (inv_output_km - inv_target_km).abs()
+        inv_output = 1 / output
+        inv_target = 1 / target
+        abs_inv_diff = (inv_output - inv_target).abs()
         self.irmse = math.sqrt((torch.pow(abs_inv_diff, 2)).mean())
         self.imae = float(abs_inv_diff.mean())
 
@@ -106,7 +93,6 @@ class AverageMeter(object):
         self.sum_irmse, self.sum_imae = 0, 0
         self.sum_mse, self.sum_rmse, self.sum_mae = 0, 0, 0
         self.sum_absrel, self.sum_lg10 = 0, 0
-        self.sum_squared_rel, self.sum_silog = 0, 0
         self.sum_delta1, self.sum_delta2, self.sum_delta3 = 0, 0, 0
         self.sum_data_time, self.sum_gpu_time = 0, 0
 
@@ -121,9 +107,7 @@ class AverageMeter(object):
         self.sum_rmse += n * result.rmse
         self.sum_mae += n * result.mae
         self.sum_absrel += n * result.absrel
-        self.sum_squared_rel += n * result.squared_rel
         self.sum_lg10 += n * result.lg10
-        self.sum_silog += n * result.silog
         self.sum_delta1 += n * result.delta1
         self.sum_delta2 += n * result.delta2
         self.sum_delta3 += n * result.delta3
@@ -137,8 +121,7 @@ class AverageMeter(object):
         avg.update(
             self.sum_irmse / self.count, self.sum_imae / self.count,
             self.sum_mse / self.count, self.sum_rmse / self.count, self.sum_mae / self.count,
-            self.sum_absrel / self.count, self.sum_squared_rel / self.count, self.sum_lg10 / self.count,
-            self.sum_silog / self.count,
+            self.sum_absrel / self.count, self.sum_lg10 / self.count,
             self.sum_delta1 / self.count, self.sum_delta2 / self.count, self.sum_delta3 / self.count,
             self.sum_gpu_time / self.count, self.sum_data_time / self.count, self.sum_loss / self.count)
         return avg

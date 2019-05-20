@@ -51,8 +51,8 @@ def main():
         best_result = checkpoint['best_result']
         optimizer = checkpoint['optimizer']
 
-        model_ori = get_model(args)
-        model_ori.load_state_dict(checkpoint['state_dict'])
+        model = get_model(args)
+        model.load_state_dict(checkpoint['state_dict'])
 
         print("=> loaded checkpoint (epoch {})".format(checkpoint['epoch']))
         del checkpoint  # clear memory
@@ -64,6 +64,7 @@ def main():
 
         print("=> model created.")
         start_iter = 1
+        best_result = None
 
         # different modules have different learning rate
         train_params = get_train_params(args, model)
@@ -75,4 +76,11 @@ def main():
         trainer = single_gpu_trainer.trainer(args, model, optimizer, start_iter, best_result)
         trainer.train_eval()
     else:
-        pass
+        from libs.trainers import multi_gpu_trainer
+        trainer = multi_gpu_trainer.trainer(args, model, optimizer, start_iter, best_result)
+        trainer.train_eval()
+
+
+if __name__ == '__main__':
+    from torchvision.models import resnet18
+    main()
