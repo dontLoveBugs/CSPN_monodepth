@@ -7,7 +7,6 @@
 @File    : single_gpu_trainer.py
 """
 
-
 import os
 import time
 
@@ -50,10 +49,11 @@ class trainer(object):
             self.best_result.set_to_worst()
 
         # train parameters
-        self.iter_save = len(self.train_loader)
+        self.iter_save = 10
+        # self.iter_save = len(self.train_loader)
         self.train_meter = AverageMeter()
         self.eval_meter = AverageMeter()
-        self.metric = self.best_result.silog
+        self.metric = self.best_result.absrel
         self.result = Result()
 
     def train_iter(self, it):
@@ -92,19 +92,23 @@ class trainer(object):
             print('Train Iter: [{0}/{1}]\t'
                   't_Data={data_time:.3f}({average.data_time:.3f}) '
                   't_GPU={gpu_time:.3f}({average.gpu_time:.3f})\n\t'
-                  'Loss={Loss:.5f}(average.loss:.5f)'
-                  'SILog={result.silog:.2f}({average.silog:.2f}) '
-                  'sqErrorRel={result.squared_rel:.2f}({average.squared_rel:.2f}) '
-                  'absErrorRel={result.absrel:.2f}({average.absrel:.2f}) '
-                  'iRMSE={result.irmse:.2f}({average.irmse:.2f}) '.format(
+                  'Loss={Loss:.5f}({average.loss:.5f}) '
+                  'RMSE={result.rmse:.2f}({average.rmse:.2f}) '
+                  'REL={result.absrel:.2f}({average.absrel:.2f}) '
+                  'Log10={result.lg10:.3f}({average.lg10:.3f}) '
+                  'Delta1={result.delta1:.3f}({average.delta1:.3f}) '
+                  'Delta2={result.delta2:.3f}({average.delta2:.3f}) '
+                  'Delta3={result.delta3:.3f}({average.delta3:.3f})'.format(
                 it, self.opt.max_iter, data_time=data_time,
                 gpu_time=gpu_time, Loss=loss.item(), result=self.result, average=avg))
 
             self.logger.add_scalar('Train/Loss', avg.loss, it)
-            self.logger.add_scalar('Train/SILog', avg.silog, it)
-            self.logger.add_scalar('Train/sqErrorRel', avg.squared_rel, it)
-            self.logger.add_scalar('Train/absErrorRel', avg.absrel, it)
-            self.logger.add_scalar('Train/iRMSE', avg.irmse, it)
+            self.logger.add_scalar('Train/RMSE', avg.rmse, it)
+            self.logger.add_scalar('Train/rel', avg.absrel, it)
+            self.logger.add_scalar('Train/Log10', avg.lg10, it)
+            self.logger.add_scalar('Train/Delta1', avg.delta1, it)
+            self.logger.add_scalar('Train/Delta2', avg.delta2, it)
+            self.logger.add_scalar('Train/Delta3', avg.delta3, it)
 
     def eval(self, it):
 
@@ -133,7 +137,7 @@ class trainer(object):
             self.eval_meter.update(self.result, gpu_time, data_time, input.size(0))
 
             if i % skip == 0:
-                pred = pred[0][0]
+                pred = pred[0]
 
                 # save 8 images for visualization
                 h, w = target.size(2), target.size(3)
@@ -172,26 +176,33 @@ class trainer(object):
             if (i + 1) % self.opt.print_freq == 0:
                 print('Test: [{0}/{1}]\t'
                       't_GPU={gpu_time:.3f}({average.gpu_time:.3f})\n\t'
-                      'SILog={result.silog:.2f}({average.silog:.2f}) '
-                      'sqErrorRel={result.squared_rel:.2f}({average.squared_rel:.2f}) '
-                      'absErrorRel={result.absrel:.2f}({average.absrel:.2f}) '
-                      'iRMSE={result.irmse:.3f}({average.irmse:.3f}) '.format(
-                    i + 1, len(self.eval_loader), gpu_time=gpu_time, result=result, average=self.eval_meter.average()))
+                      'RMSE={result.rmse:.2f}({average.rmse:.2f}) '
+                      'REL={result.absrel:.2f}({average.absrel:.2f}) '
+                      'Log10={result.lg10:.3f}({average.lg10:.3f}) '
+                      'Delta1={result.delta1:.3f}({average.delta1:.3f}) '
+                      'Delta2={result.delta2:.3f}({average.delta2:.3f}) '
+                      'Delta3={result.delta3:.3f}({average.delta3:.3f}) '.format(
+                    i + 1, len(self.eval_loader), gpu_time=gpu_time, result=self.result,
+                    average=self.eval_meter.average()))
 
         avg = self.eval_meter.average()
 
+        self.logger.add_scalar('Test/RMSE', avg.rmse, it)
+        self.logger.add_scalar('Test/rel', avg.absrel, it)
+        self.logger.add_scalar('Test/Log10', avg.lg10, it)
+        self.logger.add_scalar('Test/Delta1', avg.delta1, it)
+        self.logger.add_scalar('Test/Delta2', avg.delta2, it)
+        self.logger.add_scalar('Test/Delta3', avg.delta3, it)
+
         print('\n*\n'
-              'SILog={average.silog:.2f}\n'
-              'sqErrorRel={average.squared_rel:.2f}\n'
-              'absErrorRel={average.absrel:.2f}\n'
-              'iRMSE={average.irmse:.2f}\n'
+              'RMSE={average.rmse:.3f}\n'
+              'Rel={average.absrel:.3f}\n'
+              'Log10={average.lg10:.3f}\n'
+              'Delta1={average.delta1:.3f}\n'
+              'Delta2={average.delta2:.3f}\n'
+              'Delta3={average.delta3:.3f}\n'
               't_GPU={time:.3f}\n'.format(
             average=avg, time=avg.gpu_time))
-
-        self.logger.add_scalar('Test/SILog', avg.silog, it)
-        self.logger.add_scalar('Test/sqErrorRel', avg.squared_rel, it)
-        self.logger.add_scalar('Test/absErrorRel', avg.absrel, it)
-        self.logger.add_scalar('Test/iRMSE', avg.irmse, it)
 
     def train_eval(self):
 
@@ -204,19 +215,23 @@ class trainer(object):
                 self.model.eval()
                 self.eval(it)
 
-                self.metric = self.eval_meter.average().silog
+                self.metric = self.eval_meter.average().absrel
                 train_avg = self.train_meter.average()
                 eval_avg = self.eval_meter.average()
 
-                self.logger.add_scalars('TrainVal/SILog',
-                                   {'train_SILog': train_avg.silog, 'test_SILog': eval_avg.silog}, it)
-                self.logger.add_scalars('TrainVal/sqErrorRel',
-                                   {'train_sqErrorRel': train_avg.squared_rel, 'test_sqErrorRel': eval_avg.squared_rel},
-                                   it)
-                self.logger.add_scalars('TrainVal/absErrorRel',
-                                   {'train_absErrorRel': train_avg.absrel, 'test_absErrorRel': eval_avg.absrel}, it)
-                self.logger.add_scalars('TrainVal/iRMSE',
-                                   {'train_iRMSE': train_avg.irmse, 'test_iRMSE': eval_avg.irmse}, it)
+                self.logger.add_scalars('TrainVal/rmse',
+                                        {'train_rmse': train_avg.rmse, 'test_rmse': eval_avg.rmse}, it)
+                self.logger.add_scalars('TrainVal/rel',
+                                        {'train_rel': train_avg.absrel, 'test_rmse': eval_avg.absrel}, it)
+                self.logger.add_scalars('TrainVal/lg10',
+                                        {'train_lg10': train_avg.lg10, 'test_rmse': eval_avg.lg10}, it)
+                self.logger.add_scalars('TrainVal/Delta1',
+                                        {'train_d1': train_avg.delta1, 'test_d1': eval_avg.delta1}, it)
+                self.logger.add_scalars('TrainVal/Delta2',
+                                        {'train_d2': train_avg.delta2, 'test_d2': eval_avg.delta2}, it)
+                self.logger.add_scalars('TrainVal/Delta3',
+                                        {'train_d3': train_avg.delta3, 'test_d3': eval_avg.delta3}, it)
+
                 self.train_meter.reset()
 
                 # save the change of learning_rate
@@ -225,14 +240,14 @@ class trainer(object):
                     self.logger.add_scalar('Lr/lr_' + str(i), old_lr, it)
 
                 # remember best rmse and save checkpoint
-                is_best = eval_avg.silog < self.best_result.silog
+                is_best = eval_avg.absrel < self.best_result.absrel
                 if is_best:
                     self.best_result = eval_avg
                     with open(self.best_txt, 'w') as txtfile:
                         txtfile.write(
-                            "epoch={}, SILog={:.2f}, sqErrorRel={:.2f}, absErrorRel={:.2f}, iRMSE={:.2f}, t_gpu={:.4f}".
-                                format(it, eval_avg.silog, eval_avg.squared_rel, eval_avg.absrel, eval_avg.irmse,
-                                       eval_avg.gpu_time))
+                            "Iter={}, rmse={:.3f}, rel={:.3f}, log10={:.3f}, d1={:.3f}, d2={:.3f}, dd31={:.3f}, "
+                            "t_gpu={:.4f}".format(it, eval_avg.rmse, eval_avg.absrel, eval_avg.lg10,
+                                                  eval_avg.delta1, eval_avg.delta2, eval_avg.delta3, eval_avg.gpu_time))
 
                 # save checkpoint for each epoch
                 utils.save_checkpoint({

@@ -124,6 +124,12 @@ class UpProj_Block(nn.Module):
         self.oheight = oheight
         self.owidth = owidth
 
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+                nn.init.kaiming_normal_(m.weight.data)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias.data, 0)
+
     def _up_pooling(self, x, scale):
         N, C, H, W = x.size()
 
@@ -159,6 +165,12 @@ class Simple_Gudi_UpConv_Block(nn.Module):
         self.oheight = oheight
         self.owidth = owidth
 
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+                nn.init.kaiming_normal_(m.weight.data)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias.data, 0)
+
     def _up_pooling(self, x, scale):
         N, C, H, W = x.size()
 
@@ -187,6 +199,12 @@ class Simple_Gudi_UpConv_Block_Last_Layer(nn.Module):
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
         self.oheight = oheight
         self.owidth = owidth
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+                nn.init.kaiming_normal_(m.weight.data)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias.data, 0)
 
     def _up_pooling(self, x, scale):
         N, C, H, W = x.size()
@@ -222,6 +240,12 @@ class Gudi_UpProj_Block(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.oheight = oheight
         self.owidth = owidth
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+                nn.init.kaiming_normal_(m.weight.data)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias.data, 0)
 
     def _up_pooling(self, x, scale):
         N, C, H, W = x.size()
@@ -263,6 +287,12 @@ class Gudi_UpProj_Block_Cat(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.oheight = oheight
         self.owidth = owidth
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+                nn.init.kaiming_normal_(m.weight.data)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias.data, 0)
 
     def _up_pooling(self, x, scale):
         N, C, H, W = x.size()
@@ -519,3 +549,4 @@ if __name__ == '__main__':
         pred = model(img)
 
     print(pred[0].shape)
+    print(pred[0])
