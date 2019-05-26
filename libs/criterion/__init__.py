@@ -25,6 +25,6 @@ def get_criteria(args):
     if args.dsn:
         criterion = CriterionDSN(criterion=criterion)
     else:
-        criterion = Criterion_No_DSN(criterion=criterion)
+        criterion = Criterion_No_DSN(opt=args, criterion=criterion)
 
     return criterion

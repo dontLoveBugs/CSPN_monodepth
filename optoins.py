@@ -22,9 +22,10 @@ def parse_command():
     # training parameters
     parser.add_argument('-b', '--batch-size', default=8, type=int, help='mini-batch size (default: 4)')
 
-
     # criterion parameters
     parser.add_argument('--criterion', default='l1', type=str)
+    parser.add_argument('--grad_loss', default=1.0, type=float, help='the factor of grad loss.')
+    parser.add_argument('--normal_loss', default=1.0, type=float, help='the factor of normal loss.')
     parser.add_argument('--dsn', default=False, type=bool, help='if true, using DSN criteria')
 
     # lr scheduler parameters

@@ -123,10 +123,10 @@ class Affinity_Propagate(nn.Module):
         return torch.max(max_element1_2, max_element3_4)
 
 
-class Affinity_Propagate_monoDepth(nn.Module):
+class AffinityPropagate_prediction(nn.Module):
 
     def __init__(self, spn=False):
-        super(Affinity_Propagate_monoDepth, self).__init__()
+        super(AffinityPropagate_prediction, self).__init__()
         self.spn = spn
 
     def forward(self, guidance, blur_depth):

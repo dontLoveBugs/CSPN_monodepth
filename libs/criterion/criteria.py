@@ -8,6 +8,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from libs.image_processor import sobel_filter
+
 
 class MaskedMSELoss(nn.Module):
     def __init__(self):
@@ -145,8 +147,9 @@ class GradLoss(nn.Module):
         super(GradLoss, self).__init__()
 
     # L1 norm
-    def forward(self, grad_fake, grad_real):
-        return torch.sum(torch.mean(torch.abs(grad_real - grad_fake)))
+    def forward(self, pred, target):
+        assert pred.dim() == target.dim(), "inconsistent dimensions"
+        return torch.mean(torch.abs(target - pred))
 
 
 class NormalLoss(nn.Module):
@@ -154,7 +157,10 @@ class NormalLoss(nn.Module):
         super(NormalLoss, self).__init__()
 
     def forward(self, grad_fake, grad_real):
-        prod = (grad_fake[:, :, None, :] @ grad_real[:, :, :, None]).squeeze(-1).squeeze(-1)
+        assert grad_fake.dim() == grad_real.dim(), "inconsistent dimensions"
+
+        # prod = (grad_fake[:, :, None, :] @ grad_real[:, :, :, None]).squeeze(-1).squeeze(-1)
+        prod = grad_fake * grad_real
         fake_norm = torch.sqrt(torch.sum(grad_fake ** 2, dim=-1))
         real_norm = torch.sqrt(torch.sum(grad_real ** 2, dim=-1))
 
@@ -163,19 +169,22 @@ class NormalLoss(nn.Module):
 
 class Criterion_No_DSN(nn.Module):
     '''
-    DSN : We need to consider two supervision for the model.
+    No DSN : We don't need to consider other supervision for the model.
     '''
 
-    def __init__(self, criterion=None):
+    def __init__(self, opt, criterion=None):
         super(Criterion_No_DSN, self).__init__()
         self.criterion = criterion
+        self.opt = opt
+
+        if opt.grad_loss > 0:
+            self.grad_criterion = GradLoss()
+
+        if opt.normal_loss > 0:
+            self.normal_criterion = NormalLoss()
 
     def forward(self, preds, target):
         h, w = target.size(2), target.size(3)
-
-        # print('dsn target size:', target.size())
-        # print('dsn h = ', h)
-        # print('dsn w = ', w)
 
         if h != preds[0].size(2) or w != preds[0].size(3):
             scale_pred = F.upsample(input=preds[0], size=(h, w), mode='bilinear', align_corners=True)
@@ -183,12 +192,25 @@ class Criterion_No_DSN(nn.Module):
             scale_pred = preds[0]
         loss = self.criterion(scale_pred, target)
 
+        if self.opt.grad_loss > 0:
+            pred_grad = torch.cat(sobel_filter(scale_pred, mean=False, direction='xy'), 1)
+            target_grad = torch.cat(sobel_filter(target, mean=False, direction='xy'), 1)
+            grad_loss = self.grad_criterion(pred_grad, target_grad)
+            loss += grad_loss * self.opt.grad_loss
+
+        if self.opt.normal_loss > 0:
+            if not self.opt.grad_loss:
+                pred_grad = torch.cat(sobel_filter(scale_pred, mean=False, direction='xy'), 1)
+                target_grad = torch.cat(sobel_filter(target, mean=False, direction='xy'), 1)
+            normal_loss = self.normal_criterion(pred_grad, target_grad)
+            loss += normal_loss * self.opt.normal_loss
+
         return loss
 
 
 class CriterionDSN(nn.Module):
     '''
-    DSN : We need to consider two supervision for the model.
+    DSN : We need to consider the other supervision for the model.
     '''
 
     def __init__(self, criterion=None):

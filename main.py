@@ -13,7 +13,7 @@ import numpy as np
 import torch
 from torch.backends import cudnn
 
-from args import parse_command
+from optoins import parse_command
 from network import get_model, get_train_params
 
 

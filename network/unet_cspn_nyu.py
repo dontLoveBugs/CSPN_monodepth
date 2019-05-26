@@ -111,24 +111,12 @@ class Bottleneck(nn.Module):
         return out
 
 
-class UpProj_Block(nn.Module):
-    def __init__(self, in_channels, out_channels, oheight=0, owidth=0):
-        super(UpProj_Block, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=5, stride=1, padding=2, bias=False)
-        self.bn1 = nn.BatchNorm2d(out_channels)
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(out_channels)
-        self.sc_conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=5, stride=1, padding=2, bias=False)
-        self.sc_bn1 = nn.BatchNorm2d(out_channels)
-        self.relu = nn.ReLU(inplace=True)
+class MyBlock(nn.Module):
+    def __init__(self, oheight=0, owidth=0):
+        super(MyBlock, self).__init__()
+
         self.oheight = oheight
         self.owidth = owidth
-
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
-                nn.init.kaiming_normal_(m.weight.data)
-                if m.bias is not None:
-                    nn.init.constant_(m.bias.data, 0)
 
     def _up_pooling(self, x, scale):
         N, C, H, W = x.size()
@@ -145,6 +133,25 @@ class UpProj_Block(nn.Module):
             y = y[:, :, 0:self.oheight, 0:self.owidth]
 
         return y
+
+    def init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+                nn.init.kaiming_normal_(m.weight.data)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias.data, 0)
+
+
+class UpProj_Block(MyBlock):
+    def __init__(self, in_channels, out_channels, oheight=0, owidth=0):
+        super(UpProj_Block, self).__init__(oheight, owidth)
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=5, stride=1, padding=2, bias=False)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+        self.sc_conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=5, stride=1, padding=2, bias=False)
+        self.sc_bn1 = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
 
     def forward(self, x):
         x = self._up_pooling(x, 2)
@@ -156,36 +163,12 @@ class UpProj_Block(nn.Module):
         return out
 
 
-class Simple_Gudi_UpConv_Block(nn.Module):
+class Simple_Gudi_UpConv_Block(MyBlock):
     def __init__(self, in_channels, out_channels, oheight=0, owidth=0):
-        super(Simple_Gudi_UpConv_Block, self).__init__()
+        super(Simple_Gudi_UpConv_Block, self).__init__(oheight, owidth)
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=5, stride=1, padding=2, bias=False)
         self.bn1 = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
-        self.oheight = oheight
-        self.owidth = owidth
-
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
-                nn.init.kaiming_normal_(m.weight.data)
-                if m.bias is not None:
-                    nn.init.constant_(m.bias.data, 0)
-
-    def _up_pooling(self, x, scale):
-        N, C, H, W = x.size()
-
-        num_channels = C
-        weights = torch.zeros(num_channels, 1, scale, scale)
-        if torch.cuda.is_available():
-            weights = weights.cuda()
-        weights[:, :, 0, 0] = 1
-        y = F.conv_transpose2d(x, weights, stride=scale, groups=num_channels)
-        del weights
-
-        if self.oheight != scale * H or self.owidth != scale * W:
-            y = y[:, :, 0:self.oheight, 0:self.owidth]
-
-        return y
 
     def forward(self, x):
         x = self._up_pooling(x, 2)
@@ -193,34 +176,10 @@ class Simple_Gudi_UpConv_Block(nn.Module):
         return out
 
 
-class Simple_Gudi_UpConv_Block_Last_Layer(nn.Module):
+class Simple_Gudi_UpConv_Block_Last_Layer(MyBlock):
     def __init__(self, in_channels, out_channels, oheight=0, owidth=0):
-        super(Simple_Gudi_UpConv_Block_Last_Layer, self).__init__()
+        super(Simple_Gudi_UpConv_Block_Last_Layer, self).__init__(oheight, owidth)
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
-        self.oheight = oheight
-        self.owidth = owidth
-
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
-                nn.init.kaiming_normal_(m.weight.data)
-                if m.bias is not None:
-                    nn.init.constant_(m.bias.data, 0)
-
-    def _up_pooling(self, x, scale):
-        N, C, H, W = x.size()
-
-        num_channels = C
-        weights = torch.zeros(num_channels, 1, scale, scale)
-        if torch.cuda.is_available():
-            weights = weights.cuda()
-        weights[:, :, 0, 0] = 1
-        y = F.conv_transpose2d(x, weights, stride=scale, groups=num_channels)
-        del weights
-
-        if self.oheight != scale * H or self.owidth != scale * W:
-            y = y[:, :, 0:self.oheight, 0:self.owidth]
-
-        return y
 
     def forward(self, x):
         x = self._up_pooling(x, 2)
@@ -228,9 +187,9 @@ class Simple_Gudi_UpConv_Block_Last_Layer(nn.Module):
         return out
 
 
-class Gudi_UpProj_Block(nn.Module):
+class Gudi_UpProj_Block(MyBlock):
     def __init__(self, in_channels, out_channels, oheight=0, owidth=0):
-        super(Gudi_UpProj_Block, self).__init__()
+        super(Gudi_UpProj_Block, self).__init__(oheight, owidth)
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=5, stride=1, padding=2, bias=False)
         self.bn1 = nn.BatchNorm2d(out_channels)
         self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
@@ -238,30 +197,6 @@ class Gudi_UpProj_Block(nn.Module):
         self.sc_conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=5, stride=1, padding=2, bias=False)
         self.sc_bn1 = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
-        self.oheight = oheight
-        self.owidth = owidth
-
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
-                nn.init.kaiming_normal_(m.weight.data)
-                if m.bias is not None:
-                    nn.init.constant_(m.bias.data, 0)
-
-    def _up_pooling(self, x, scale):
-        N, C, H, W = x.size()
-
-        num_channels = C
-        weights = torch.zeros(num_channels, 1, scale, scale)
-        if torch.cuda.is_available():
-            weights = weights.cuda()
-        weights[:, :, 0, 0] = 1
-        y = F.conv_transpose2d(x, weights, stride=scale, groups=num_channels)
-        del weights
-
-        if self.oheight != scale * H or self.owidth != scale * W:
-            y = y[:, :, 0:self.oheight, 0:self.owidth]
-
-        return y
 
     def forward(self, x):
         x = self._up_pooling(x, 2)
@@ -273,9 +208,9 @@ class Gudi_UpProj_Block(nn.Module):
         return out
 
 
-class Gudi_UpProj_Block_Cat(nn.Module):
+class Gudi_UpProj_Block_Cat(MyBlock):
     def __init__(self, in_channels, out_channels, oheight=0, owidth=0):
-        super(Gudi_UpProj_Block_Cat, self).__init__()
+        super(Gudi_UpProj_Block_Cat, self).__init__(oheight, owidth)
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=5, stride=1, padding=2, bias=False)
         self.bn1 = nn.BatchNorm2d(out_channels)
         self.conv1_1 = nn.Conv2d(out_channels * 2, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
@@ -285,30 +220,6 @@ class Gudi_UpProj_Block_Cat(nn.Module):
         self.sc_conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=5, stride=1, padding=2, bias=False)
         self.sc_bn1 = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
-        self.oheight = oheight
-        self.owidth = owidth
-
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
-                nn.init.kaiming_normal_(m.weight.data)
-                if m.bias is not None:
-                    nn.init.constant_(m.bias.data, 0)
-
-    def _up_pooling(self, x, scale):
-        N, C, H, W = x.size()
-
-        num_channels = C
-        weights = torch.zeros(num_channels, 1, scale, scale)
-        if torch.cuda.is_available():
-            weights = weights.cuda()
-        weights[:, :, 0, 0] = 1
-        y = F.conv_transpose2d(x, weights, stride=scale, groups=num_channels)
-        del weights
-
-        if self.oheight != scale * H or self.owidth != scale * W:
-            y = y[:, :, 0:self.oheight, 0:self.owidth]
-
-        return y
 
     def forward(self, x, side_input):
         x = self._up_pooling(x, 2)
@@ -350,7 +261,7 @@ class ResNet_completion(nn.Module):
         self.gud_up_proj_layer3 = self._make_gud_up_conv_layer(Gudi_UpProj_Block_Cat, 512, 256, 57, 76)
         self.gud_up_proj_layer4 = self._make_gud_up_conv_layer(Gudi_UpProj_Block_Cat, 256, 64, 114, 152)
         self.gud_up_proj_layer5 = self._make_gud_up_conv_layer(Simple_Gudi_UpConv_Block_Last_Layer, 64, 1, 228, 304)
-        self.gud_up_proj_layer6 = self._make_gud_up_conv_layer(Simple_Gudi_UpConv_Block_Last_Layer, 64, 9, 228, 304)
+        self.gud_up_proj_layer6 = self._make_gud_up_conv_layer(Simple_Gudi_UpConv_Block_Last_Layer, 64, 8, 228, 304)
 
     def _make_layer(self, block, planes, blocks, stride=1):
         downsample = None
@@ -439,7 +350,7 @@ class ResNet_prediction(nn.Module):
         self.gud_up_proj_layer3 = self._make_gud_up_conv_layer(Gudi_UpProj_Block_Cat, 512, 256, 57, 76)
         self.gud_up_proj_layer4 = self._make_gud_up_conv_layer(Gudi_UpProj_Block_Cat, 256, 64, 114, 152)
         self.gud_up_proj_layer5 = self._make_gud_up_conv_layer(Simple_Gudi_UpConv_Block_Last_Layer, 64, 1, 228, 304)
-        self.gud_up_proj_layer6 = self._make_gud_up_conv_layer(Simple_Gudi_UpConv_Block_Last_Layer, 64, 8, 228, 304)
+        self.gud_up_proj_layer6 = self._make_gud_up_conv_layer(Simple_Gudi_UpConv_Block_Last_Layer, 64, 9, 228, 304)
 
     def _make_layer(self, block, planes, blocks, stride=1):
         downsample = None
@@ -492,8 +403,6 @@ class ResNet_prediction(nn.Module):
 
         blur_depth = self.gud_up_proj_layer5(x)
         guidance = self.gud_up_proj_layer6(x)
-        print('blur depth:', blur_depth.shape)
-        print('guidance:', guidance.shape)
         x = self.post_process_layer(guidance, blur_depth)
 
         return [x, guidance]
@@ -542,11 +451,13 @@ def resnet50_completion(pretrained=False, **kwargs):
 
 
 if __name__ == '__main__':
-    img = torch.randn(4, 3, 228, 304)
-    model = resnet50_prediction(pretrained=False)
+    img = torch.randn(4, 3, 228, 304).cuda()
+    model = resnet50_prediction(pretrained=False).cuda()
 
     with torch.no_grad():
         pred = model(img)
 
     print(pred[0].shape)
     print(pred[0])
+
+    print('affinity:', pred[1])
