@@ -11,6 +11,8 @@ class Path(object):
     def db_root_dir(database):
         if database == 'kitti':
             return '/data/wangxin/KITTI'
+        elif database == 'nyu':
+            return 'D:\\DATASETS\\nyudepthv2\\nyudepthv2'
         else:
             print('Database {} not available.'.format(database))
             raise NotImplementedError

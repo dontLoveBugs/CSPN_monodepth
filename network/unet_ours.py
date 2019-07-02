@@ -1,15 +1,21 @@
+# -*- coding: utf-8 -*-
 """
-Created on Sat Feb  3 15:32:49 2018
-@author: norbot
+ @Time    : 2019/6/30 22:38
+ @Author  : Wang Xin
+ @Email   : wangxin_buaa@163.com
 """
 
+"""
+    Modified by WangXin
+    Updated on 16:58:37 19/05/19
+    Replace upsample with conv_transpose2d to implement up_pooling
+"""
 import torch
 import torch.nn as nn
-
-from network.libs.post_process import CSPN_new as post_process
+import torch.nn.functional as F
+from network.libs.post_process import CSPN_ours as post_process
 
 # memory analyze
-import gc
 
 __all__ = ['ResNet', 'resnet18', 'resnet50']
 
@@ -104,9 +110,38 @@ class Bottleneck(nn.Module):
         return out
 
 
-class UpProj_Block(nn.Module):
+class MyBlock(nn.Module):
+    def __init__(self, oheight=0, owidth=0):
+        super(MyBlock, self).__init__()
+
+        self.oheight = oheight
+        self.owidth = owidth
+
+    def _up_pooling(self, x, scale):
+        N, C, H, W = x.size()
+
+        num_channels = C
+        weights = torch.zeros(num_channels, 1, scale, scale, device=x.device)
+        weights[:, :, 0, 0] = 1
+        y = F.conv_transpose2d(x, weights, stride=scale, groups=num_channels)
+        del weights
+
+        if self.oheight != scale * H or self.owidth != scale * W:
+            y = y[:, :, 0:self.oheight, 0:self.owidth]
+
+        return y
+
+    def init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+                nn.init.kaiming_normal_(m.weight.data)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias.data, 0)
+
+
+class UpProj_Block(MyBlock):
     def __init__(self, in_channels, out_channels, oheight=0, owidth=0):
-        super(UpProj_Block, self).__init__()
+        super(UpProj_Block, self).__init__(oheight, owidth)
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=5, stride=1, padding=2, bias=False)
         self.bn1 = nn.BatchNorm2d(out_channels)
         self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
@@ -114,26 +149,6 @@ class UpProj_Block(nn.Module):
         self.sc_conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=5, stride=1, padding=2, bias=False)
         self.sc_bn1 = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
-        self.oheight = oheight
-        self.owidth = owidth
-
-    def _up_pooling(self, x, scale):
-        oheight = 0
-        owidth = 0
-        if self.oheight == 0 and self.owidth == 0:
-            oheight = scale * x.size(2)
-            owidth = scale * x.size(3)
-            x = nn.Upsample(scale_factor=scale, mode='nearest')(x)
-        else:
-            oheight = self.oheight
-            owidth = self.owidth
-            x = nn.Upsample(size=(oheight, owidth), mode='nearest')(x)
-        mask = torch.zeros_like(x)
-        for h in range(0, oheight, 2):
-            for w in range(0, owidth, 2):
-                mask[:, :, h, w] = 1
-        x = torch.mul(mask, x)
-        return x
 
     def forward(self, x):
         x = self._up_pooling(x, 2)
@@ -145,28 +160,12 @@ class UpProj_Block(nn.Module):
         return out
 
 
-class Simple_Gudi_UpConv_Block(nn.Module):
+class Simple_Gudi_UpConv_Block(MyBlock):
     def __init__(self, in_channels, out_channels, oheight=0, owidth=0):
-        super(Simple_Gudi_UpConv_Block, self).__init__()
+        super(Simple_Gudi_UpConv_Block, self).__init__(oheight, owidth)
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=5, stride=1, padding=2, bias=False)
         self.bn1 = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
-        self.oheight = oheight
-        self.owidth = owidth
-
-    def _up_pooling(self, x, scale):
-
-        x = nn.Upsample(scale_factor=scale, mode='nearest')(x)
-        if self.oheight != 0 and self.owidth != 0:
-            x = x.narrow(2, 0, self.oheight)
-            x = x.narrow(3, 0, self.owidth)
-        #            x = x[:,:,0:self.oheight, 0:self.owidth].clone()
-        mask = torch.zeros_like(x)
-        for h in range(0, self.oheight, 2):
-            for w in range(0, self.owidth, 2):
-                mask[:, :, h, w] = 1
-        x = torch.mul(mask, x)
-        return x
 
     def forward(self, x):
         x = self._up_pooling(x, 2)
@@ -174,25 +173,10 @@ class Simple_Gudi_UpConv_Block(nn.Module):
         return out
 
 
-class Simple_Gudi_UpConv_Block_Last_Layer(nn.Module):
+class Simple_Gudi_UpConv_Block_Last_Layer(MyBlock):
     def __init__(self, in_channels, out_channels, oheight=0, owidth=0):
-        super(Simple_Gudi_UpConv_Block_Last_Layer, self).__init__()
+        super(Simple_Gudi_UpConv_Block_Last_Layer, self).__init__(oheight, owidth)
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
-        self.oheight = oheight
-        self.owidth = owidth
-
-    def _up_pooling(self, x, scale):
-
-        x = nn.Upsample(scale_factor=scale, mode='nearest')(x)
-        if self.oheight != 0 and self.owidth != 0:
-            x = x.narrow(2, 0, self.oheight)
-            x = x.narrow(3, 0, self.owidth)
-        mask = torch.zeros_like(x)
-        for h in range(0, self.oheight, 2):
-            for w in range(0, self.owidth, 2):
-                mask[:, :, h, w] = 1
-        x = torch.mul(mask, x)
-        return x
 
     def forward(self, x):
         x = self._up_pooling(x, 2)
@@ -200,9 +184,9 @@ class Simple_Gudi_UpConv_Block_Last_Layer(nn.Module):
         return out
 
 
-class Gudi_UpProj_Block(nn.Module):
+class Gudi_UpProj_Block(MyBlock):
     def __init__(self, in_channels, out_channels, oheight=0, owidth=0):
-        super(Gudi_UpProj_Block, self).__init__()
+        super(Gudi_UpProj_Block, self).__init__(oheight, owidth)
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=5, stride=1, padding=2, bias=False)
         self.bn1 = nn.BatchNorm2d(out_channels)
         self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
@@ -210,20 +194,6 @@ class Gudi_UpProj_Block(nn.Module):
         self.sc_conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=5, stride=1, padding=2, bias=False)
         self.sc_bn1 = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
-        self.oheight = oheight
-        self.owidth = owidth
-
-    def _up_pooling(self, x, scale):
-
-        x = nn.Upsample(scale_factor=scale, mode='nearest')(x)
-        if self.oheight != 0 and self.owidth != 0:
-            x = x[:, :, 0:self.oheight, 0:self.owidth]
-        mask = torch.zeros_like(x)
-        for h in range(0, self.oheight, 2):
-            for w in range(0, self.owidth, 2):
-                mask[:, :, h, w] = 1
-        x = torch.mul(mask, x)
-        return x
 
     def forward(self, x):
         x = self._up_pooling(x, 2)
@@ -235,9 +205,9 @@ class Gudi_UpProj_Block(nn.Module):
         return out
 
 
-class Gudi_UpProj_Block_Cat(nn.Module):
+class Gudi_UpProj_Block_Cat(MyBlock):
     def __init__(self, in_channels, out_channels, oheight=0, owidth=0):
-        super(Gudi_UpProj_Block_Cat, self).__init__()
+        super(Gudi_UpProj_Block_Cat, self).__init__(oheight, owidth)
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=5, stride=1, padding=2, bias=False)
         self.bn1 = nn.BatchNorm2d(out_channels)
         self.conv1_1 = nn.Conv2d(out_channels * 2, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
@@ -247,20 +217,6 @@ class Gudi_UpProj_Block_Cat(nn.Module):
         self.sc_conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=5, stride=1, padding=2, bias=False)
         self.sc_bn1 = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
-        self.oheight = oheight
-        self.owidth = owidth
-
-    def _up_pooling(self, x, scale):
-
-        x = nn.Upsample(scale_factor=scale, mode='nearest')(x)
-        if self.oheight != 0 and self.owidth != 0:
-            x = x[:, :, 0:self.oheight, 0:self.owidth]
-        mask = torch.zeros_like(x)
-        for h in range(0, self.oheight, 2):
-            for w in range(0, self.owidth, 2):
-                mask[:, :, h, w] = 1
-        x = torch.mul(mask, x)
-        return x
 
     def forward(self, x, side_input):
         x = self._up_pooling(x, 2)
@@ -274,11 +230,11 @@ class Gudi_UpProj_Block_Cat(nn.Module):
         return out
 
 
-class ResNet(nn.Module):
+class ResNet_completion(nn.Module):
 
     def __init__(self, block, layers, up_proj_block):
         self.inplanes = 64
-        super(ResNet, self).__init__()
+        super(ResNet_completion, self).__init__()
         self.conv1_1 = nn.Conv2d(4, 64, kernel_size=7, stride=2, padding=3,
                                  bias=False)
         self.bn1 = nn.BatchNorm2d(64)
@@ -288,30 +244,21 @@ class ResNet(nn.Module):
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
+
         self.mid_channel = 256 * block.expansion
-        self.conv2 = nn.Conv2d(512 * block.expansion, 512 * block.expansion, kernel_size=3,
-                               stride=1, padding=1, bias=False)
+        self.conv2 = nn.Conv2d(512 * block.expansion, 512 * block.expansion, kernel_size=3, stride=1, padding=1,
+                               bias=False)
         self.bn2 = nn.BatchNorm2d(512 * block.expansion)
-        self.up_proj_layer1 = self._make_up_conv_layer(up_proj_block,
-                                                       self.mid_channel,
-                                                       int(self.mid_channel / 2))
-        self.up_proj_layer2 = self._make_up_conv_layer(up_proj_block,
-                                                       int(self.mid_channel / 2),
-                                                       int(self.mid_channel / 4))
-        self.up_proj_layer3 = self._make_up_conv_layer(up_proj_block,
-                                                       int(self.mid_channel / 4),
-                                                       int(self.mid_channel / 8))
-        self.up_proj_layer4 = self._make_up_conv_layer(up_proj_block,
-                                                       int(self.mid_channel / 8),
-                                                       int(self.mid_channel / 16))
         self.conv3 = nn.Conv2d(128, 1, kernel_size=3, stride=1, padding=1, bias=False)
+
         self.post_process_layer = self._make_post_process_layer()
+
         self.gud_up_proj_layer1 = self._make_gud_up_conv_layer(Gudi_UpProj_Block, 2048, 1024, 15, 19)
         self.gud_up_proj_layer2 = self._make_gud_up_conv_layer(Gudi_UpProj_Block_Cat, 1024, 512, 29, 38)
         self.gud_up_proj_layer3 = self._make_gud_up_conv_layer(Gudi_UpProj_Block_Cat, 512, 256, 57, 76)
         self.gud_up_proj_layer4 = self._make_gud_up_conv_layer(Gudi_UpProj_Block_Cat, 256, 64, 114, 152)
         self.gud_up_proj_layer5 = self._make_gud_up_conv_layer(Simple_Gudi_UpConv_Block_Last_Layer, 64, 1, 228, 304)
-        self.gud_up_proj_layer6 = self._make_gud_up_conv_layer(Simple_Gudi_UpConv_Block_Last_Layer, 64, 12, 228, 304)
+        self.gud_up_proj_layer6 = self._make_gud_up_conv_layer(Simple_Gudi_UpConv_Block_Last_Layer, 64, 8, 228, 304)
 
     def _make_layer(self, block, planes, blocks, stride=1):
         downsample = None
@@ -337,11 +284,12 @@ class ResNet(nn.Module):
         return up_proj_block(in_channels, out_channels, oheight, owidth)
 
     def _make_post_process_layer(self):
-        return post_process.AffinityPropagate(24, 3)
+        return post_process.GuidedFilter()
 
     def forward(self, x):
         [batch_size, channel, height, width] = x.size()
-        sparse_depth = x.narrow(1, 3, 1).clone()
+        sparse_depth = x.narrow(1, 3, 1).clone()  # get sparse depth
+
         x = self.conv1_1(x)
         skip4 = x
 
@@ -356,17 +304,106 @@ class ResNet(nn.Module):
 
         x = self.layer3(x)
         x = self.layer4(x)
+
         x = self.bn2(self.conv2(x))
         x = self.gud_up_proj_layer1(x)
+
         x = self.gud_up_proj_layer2(x, skip2)
         x = self.gud_up_proj_layer3(x, skip3)
         x = self.gud_up_proj_layer4(x, skip4)
 
+        blur_depth = self.gud_up_proj_layer5(x)
         guidance = self.gud_up_proj_layer6(x)
-        x = self.gud_up_proj_layer5(x)
+        x = self.post_process_layer(blur_depth, guidance, sparse_depth)
 
-        x = self.post_process_layer(guidance, x, sparse_depth)
-        return x
+        return [x, guidance]
+
+
+class ResNet(nn.Module):
+
+    def __init__(self, block, layers, up_proj_block):
+        self.inplanes = 64
+        super(ResNet, self).__init__()
+        self.conv1_1 = nn.Conv2d(4, 64, kernel_size=7, stride=2, padding=3,
+                                 bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        self.layer1 = self._make_layer(block, 64, layers[0])
+        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
+
+        self.mid_channel = 256 * block.expansion
+        self.conv2 = nn.Conv2d(512 * block.expansion, 512 * block.expansion, kernel_size=3, stride=1, padding=1,
+                               bias=False)
+        self.bn2 = nn.BatchNorm2d(512 * block.expansion)
+        self.conv3 = nn.Conv2d(128, 1, kernel_size=3, stride=1, padding=1, bias=False)
+
+        self.post_process_layer = self._make_post_process_layer()
+
+        self.gud_up_proj_layer1 = self._make_gud_up_conv_layer(Gudi_UpProj_Block, 2048, 1024, 15, 19)
+        self.gud_up_proj_layer2 = self._make_gud_up_conv_layer(Gudi_UpProj_Block_Cat, 1024, 512, 29, 38)
+        self.gud_up_proj_layer3 = self._make_gud_up_conv_layer(Gudi_UpProj_Block_Cat, 512, 256, 57, 76)
+        self.gud_up_proj_layer4 = self._make_gud_up_conv_layer(Gudi_UpProj_Block_Cat, 256, 64, 114, 152)
+        self.gud_up_proj_layer5 = self._make_gud_up_conv_layer(Simple_Gudi_UpConv_Block_Last_Layer, 64, 1, 228, 304)
+        self.gud_up_proj_layer6 = self._make_gud_up_conv_layer(Simple_Gudi_UpConv_Block_Last_Layer, 64, 8, 228, 304)
+
+    def _make_layer(self, block, planes, blocks, stride=1):
+        downsample = None
+        if stride != 1 or self.inplanes != planes * block.expansion:
+            downsample = nn.Sequential(
+                nn.Conv2d(self.inplanes, planes * block.expansion,
+                          kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(planes * block.expansion),
+            )
+
+        layers = []
+        layers.append(block(self.inplanes, planes, stride, downsample))
+        self.inplanes = planes * block.expansion
+        for i in range(1, blocks):
+            layers.append(block(self.inplanes, planes))
+
+        return nn.Sequential(*layers)
+
+    def _make_up_conv_layer(self, up_proj_block, in_channels, out_channels):
+        return up_proj_block(in_channels, out_channels)
+
+    def _make_gud_up_conv_layer(self, up_proj_block, in_channels, out_channels, oheight, owidth):
+        return up_proj_block(in_channels, out_channels, oheight, owidth)
+
+    def _make_post_process_layer(self):
+        return post_process.AffinityPropagate(prop_time=24)
+
+    def forward(self, x):
+        sparse_depth = x.narrow(1, 3, 1).clone()  # get sparse depth
+        x = self.conv1_1(x)
+        skip4 = x
+
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+        x = self.layer1(x)
+        skip3 = x
+
+        x = self.layer2(x)
+        skip2 = x
+
+        x = self.layer3(x)
+        x = self.layer4(x)
+
+        x = self.bn2(self.conv2(x))
+        x = self.gud_up_proj_layer1(x)
+
+        x = self.gud_up_proj_layer2(x, skip2)
+        x = self.gud_up_proj_layer3(x, skip3)
+        x = self.gud_up_proj_layer4(x, skip4)
+
+        blur_depth = self.gud_up_proj_layer5(x)
+        guidance = self.gud_up_proj_layer6(x)
+        x = self.post_process_layer(blur_depth, guidance, sparse_depth=sparse_depth)
+
+        return [x, guidance]
 
 
 def resnet18(pretrained=False, **kwargs):
@@ -398,7 +435,16 @@ def resnet50(pretrained=False, **kwargs):
 
 
 if __name__ == '__main__':
-    import torchsummary
-
+    # img = torch.randn(4, 4, 228, 304).cuda()
     model = resnet50(pretrained=False)
+
+    import torchsummary
     torchsummary.summary(model, input_size=(4, 228, 304))
+
+    # import time
+    # end = time.time()
+    # pred = model(img)
+    # end = time.time() - end
+    # print('pac implementation cost time = ', end)
+
+

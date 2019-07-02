@@ -8,19 +8,21 @@
 """
 
 
-def get_model(args):
-    if args.dataset.lower() == 'kitti':
+def get_model(opt):
+    if opt.dataset.lower() == 'kitti':
         raise NotImplementedError
-    elif args.dataset.lower() == 'nyu':
-        if args.modality.lower() == 'rgb':
-            from network.unet_cspn_nyu import resnet50_prediction
-            return resnet50_prediction(pretrained=True)
-        elif args.modality.lower() == 'rgbd':
-            from network.unet_cspn_nyu import resnet50_completion
-            return resnet50_completion(pretrained=True)
+    elif opt.dataset.lower() == 'nyu':
+        if opt.modality.lower() == 'rgb':
+            raise NotImplementedError
+        elif opt.modality.lower() == 'rgbd':
+            if opt.arch.lower() == 'unet':
+                from network.unet_cspn_nyu import resnet50
+                return resnet50(pretrained=True)
+            else:
+                raise NotImplementedError
         else:
             raise NotImplementedError
 
 
-def get_train_params(args, model):
+def get_train_params(opt, model):
     return model.parameters()

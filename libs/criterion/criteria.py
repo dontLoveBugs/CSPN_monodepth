@@ -172,38 +172,18 @@ class Criterion_No_DSN(nn.Module):
     No DSN : We don't need to consider other supervision for the model.
     '''
 
-    def __init__(self, opt, criterion=None):
+    def __init__(self, criterion=None):
         super(Criterion_No_DSN, self).__init__()
         self.criterion = criterion
-        self.opt = opt
-
-        if opt.grad_loss > 0:
-            self.grad_criterion = GradLoss()
-
-        if opt.normal_loss > 0:
-            self.normal_criterion = NormalLoss()
 
     def forward(self, preds, target):
         h, w = target.size(2), target.size(3)
 
         if h != preds[0].size(2) or w != preds[0].size(3):
-            scale_pred = F.upsample(input=preds[0], size=(h, w), mode='bilinear', align_corners=True)
+            scale_target = F.interpolate(input=target, size=preds[0].size()[-2:], mode='nearest')
         else:
-            scale_pred = preds[0]
-        loss = self.criterion(scale_pred, target)
-
-        if self.opt.grad_loss > 0:
-            pred_grad = torch.cat(sobel_filter(scale_pred, mean=False, direction='xy'), 1)
-            target_grad = torch.cat(sobel_filter(target, mean=False, direction='xy'), 1)
-            grad_loss = self.grad_criterion(pred_grad, target_grad)
-            loss += grad_loss * self.opt.grad_loss
-
-        if self.opt.normal_loss > 0:
-            if not self.opt.grad_loss:
-                pred_grad = torch.cat(sobel_filter(scale_pred, mean=False, direction='xy'), 1)
-                target_grad = torch.cat(sobel_filter(target, mean=False, direction='xy'), 1)
-            normal_loss = self.normal_criterion(pred_grad, target_grad)
-            loss += normal_loss * self.opt.normal_loss
+            scale_target = target
+        loss = self.criterion(preds[0], scale_target)
 
         return loss
 

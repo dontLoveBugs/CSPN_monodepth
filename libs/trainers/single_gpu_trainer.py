@@ -22,18 +22,26 @@ from libs.scheduler import get_schedular, do_schedule
 
 class trainer(object):
 
-    def __init__(self, args, model, optimizer, start_iter, best_result=None):
-        self.opt = args
+    def __init__(self, opt, model, optimizer, start_iter, best_result=None):
+        self.opt = opt
         self.model = model.cuda()
         self.optimizer = optimizer
-        self.scheduler = get_schedular(optimizer, args)
-        self.criterion = get_criteria(args)
+        self.scheduler = get_schedular(optimizer, self.opt)
+        self.criterion = get_criteria(self.opt)
 
         # record file path
-        self.output_directory = utils.get_save_path(args)
+        if self.opt.discretization > 1:
+            from dataloaders.utils import DepthCoefﬁcient
+            self.dc = DepthCoefﬁcient(min=1, max=91, N=opt.discretization)
+        else:
+            self.dc = None
+
+        self.criterion = get_criteria(self.opt)
+
+        self.output_directory = utils.get_save_path(self.opt)
         self.best_txt = os.path.join(self.output_directory, 'best.txt')
-        utils.write_config_file(args, self.output_directory)
         self.logger = utils.get_logger(self.output_directory)
+        opt.write_config(self.output_directory)
 
         self.st_iter, self.ed_iter = start_iter, self.opt.max_iter
 
@@ -49,7 +57,7 @@ class trainer(object):
             self.best_result.set_to_worst()
 
         # train parameters
-        self.iter_save = 10
+        self.iter_save = len(self.train_loader)
         # self.iter_save = len(self.train_loader)
         self.train_meter = AverageMeter()
         self.eval_meter = AverageMeter()
@@ -211,6 +219,11 @@ class trainer(object):
             self.model.train()
             self.train_iter(it)
 
+            # save the change of learning_rate
+            for i, param_group in enumerate(self.optimizer.param_groups):
+                old_lr = float(param_group['lr'])
+                self.logger.add_scalar('Lr/lr_' + str(i), old_lr, it)
+
             if it % self.iter_save == 0:
                 self.model.eval()
                 self.eval(it)
@@ -233,11 +246,6 @@ class trainer(object):
                                         {'train_d3': train_avg.delta3, 'test_d3': eval_avg.delta3}, it)
 
                 self.train_meter.reset()
-
-                # save the change of learning_rate
-                for i, param_group in enumerate(self.optimizer.param_groups):
-                    old_lr = float(param_group['lr'])
-                    self.logger.add_scalar('Lr/lr_' + str(i), old_lr, it)
 
                 # remember best rmse and save checkpoint
                 is_best = eval_avg.absrel < self.best_result.absrel

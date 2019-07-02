@@ -13,24 +13,26 @@ import numpy as np
 import torch
 from torch.backends import cudnn
 
-from optoins import parse_command
+
 from network import get_model, get_train_params
+from options import Options
 
 
 def main():
-    args = parse_command()
-    print(args)
+    opt = Options()
+    opt.parse_command()
+    opt.print_items()
 
     # if setting gpu id, the using single GPU
-    if args.gpu:
+    if opt.gpu:
         print('Single GPU Mode.')
         os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 
     # set random seed
-    torch.manual_seed(args.manual_seed)
-    torch.cuda.manual_seed(args.manual_seed)
-    np.random.seed(args.manual_seed)
-    random.seed(args.manual_seed)
+    torch.manual_seed(opt.manual_seed)
+    torch.cuda.manual_seed(opt.manual_seed)
+    np.random.seed(opt.manual_seed)
+    random.seed(opt.manual_seed)
 
     cudnn.benchmark = True
 
@@ -39,19 +41,19 @@ def main():
         print("Let's use ", torch.cuda.device_count(), " GPUs!")
     else:
         print('Single GPU Mode.')
-        print("Let's use GPU:", args.gpu)
+        print("Let's use GPU:", opt.gpu)
 
-    if args.restore:
-        assert os.path.isfile(args.restore), \
-            "=> no checkpoint found at '{}'".format(args.restore)
-        print("=> loading checkpoint '{}'".format(args.restore))
-        checkpoint = torch.load(args.restore)
+    if opt.restore:
+        assert os.path.isfile(opt.restore), \
+            "=> no checkpoint found at '{}'".format(opt.restore)
+        print("=> loading checkpoint '{}'".format(opt.restore))
+        checkpoint = torch.load(opt.restore)
 
         start_iter = checkpoint['epoch'] + 1
         best_result = checkpoint['best_result']
         optimizer = checkpoint['optimizer']
 
-        model = get_model(args)
+        model = get_model(opt)
         model.load_state_dict(checkpoint['state_dict'])
 
         print("=> loaded checkpoint (epoch {})".format(checkpoint['epoch']))
@@ -60,27 +62,26 @@ def main():
         torch.cuda.empty_cache()
     else:
         print("=> creating Model")
-        model = get_model(args)
+        model = get_model(opt)
 
         print("=> model created.")
         start_iter = 1
         best_result = None
 
         # different modules have different learning rate
-        train_params = get_train_params(args, model)
-        optimizer = torch.optim.SGD(train_params, lr=args.lr, momentum=args.momentum,
-                                    weight_decay=args.weight_decay)
+        train_params = get_train_params(opt, model)
+        optimizer = torch.optim.SGD(train_params, lr=opt.lr, momentum=opt.momentum,
+                                    weight_decay=opt.weight_decay)
 
     if torch.cuda.device_count() == 1:
         from libs.trainers import single_gpu_trainer
-        trainer = single_gpu_trainer.trainer(args, model, optimizer, start_iter, best_result)
+        trainer = single_gpu_trainer.trainer(opt, model, optimizer, start_iter, best_result)
         trainer.train_eval()
     else:
         from libs.trainers import multi_gpu_trainer
-        trainer = multi_gpu_trainer.trainer(args, model, optimizer, start_iter, best_result)
+        trainer = multi_gpu_trainer.trainer(opt, model, optimizer, start_iter, best_result)
         trainer.train_eval()
 
 
 if __name__ == '__main__':
-    from torchvision.models import resnet18
     main()

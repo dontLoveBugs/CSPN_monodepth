@@ -22,9 +22,9 @@ def get_criteria(args):
         print('no available criterion methods named as ', args.arch)
         raise NotImplementedError
 
-    if args.dsn:
+    if args.loss_wrapper.lower() == 'dsn':
         criterion = CriterionDSN(criterion=criterion)
     else:
-        criterion = Criterion_No_DSN(opt=args, criterion=criterion)
+        criterion = Criterion_No_DSN(criterion=criterion)
 
     return criterion
