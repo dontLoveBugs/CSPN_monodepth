@@ -16,7 +16,7 @@ def get_model(opt):
             raise NotImplementedError
         elif opt.modality.lower() == 'rgbd':
             if opt.arch.lower() == 'unet':
-                from network.unet_cspn_nyu import resnet50
+                from network.unet_ours import resnet50
                 return resnet50(pretrained=True)
             else:
                 raise NotImplementedError

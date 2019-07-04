@@ -180,10 +180,10 @@ class Criterion_No_DSN(nn.Module):
         h, w = target.size(2), target.size(3)
 
         if h != preds[0].size(2) or w != preds[0].size(3):
-            scale_target = F.interpolate(input=target, size=preds[0].size()[-2:], mode='nearest')
+            scale_pred = F.interpolate(input=preds[0], size=(h, w), mode='bilinear', align_corners=True)
         else:
-            scale_target = target
-        loss = self.criterion(preds[0], scale_target)
+            scale_pred = preds[0]
+        loss = self.criterion(scale_pred, target)
 
         return loss
 

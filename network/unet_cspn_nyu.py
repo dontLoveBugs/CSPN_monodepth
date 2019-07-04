@@ -11,6 +11,24 @@ from network.libs.post_process import CSPN_new as post_process
 # memory analyze
 import gc
 
+
+"""
+    if using multi-gpus, replace batchnorm with inplace abn.
+    Note: When using multi-gpus, if you add new operations, 
+    you should not use inplace operation, such as "+=" or setting flag "inplace=True".
+"""
+if torch.cuda.device_count() > 1:
+    from network.libs.inplace_abn import InPlaceABNSync
+    affine_par = True
+    import functools
+    BatchNorm2d = functools.partial(InPlaceABNSync, activation='none')
+    BatchNorm2d_relu = InPlaceABNSync
+else:
+    affine_par = True
+    BatchNorm2d = nn.BatchNorm2d
+    from network.libs.base.operation import BatchNorm2d_Relu
+    BatchNorm2d_relu = BatchNorm2d_Relu
+
 __all__ = ['ResNet', 'resnet18', 'resnet50']
 
 model_urls = {
@@ -39,10 +57,10 @@ class BasicBlock(nn.Module):
     def __init__(self, inplanes, planes, stride=1, downsample=None):
         super(BasicBlock, self).__init__()
         self.conv1 = conv3x3(inplanes, planes, stride)
-        self.bn1 = nn.BatchNorm2d(planes)
+        self.bn1 = BatchNorm2d(planes)
         self.relu = nn.ReLU(inplace=True)
         self.conv2 = conv3x3(planes, planes)
-        self.bn2 = nn.BatchNorm2d(planes)
+        self.bn2 = BatchNorm2d(planes)
         self.downsample = downsample
         self.stride = stride
 

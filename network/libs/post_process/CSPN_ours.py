@@ -49,5 +49,6 @@ class AffinityPropagate(nn.Module):
             x = conv2d(x, kernel, kernel_size=K, stride=1, padding=K // 2, dilation=1)
 
             if sparse_depth is not None:
-                x = sparse_mask * _x + (1 - sparse_mask) * x
+                no_sparse_mask = 1 - sparse_mask
+                x = sparse_mask * _x + no_sparse_mask * x
         return x

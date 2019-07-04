@@ -12,21 +12,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class SeparableConv2d(nn.Module):
-    def __init__(self, inplanes, planes, kernel_size=3, stride=1, padding=1, dilation=1, bias=False, BatchNorm=nn.BatchNorm2d):
-        super(SeparableConv2d, self).__init__()
-
-        self.conv1 = nn.Conv2d(inplanes, inplanes, kernel_size, stride, padding, dilation, groups=inplanes, bias=bias)
-        self.bn = BatchNorm(inplanes)
-        self.pointwise = nn.Conv2d(inplanes, planes, 1, 1, 0, 1, 1, bias=bias)
-
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.bn(x)
-        x = self.pointwise(x)
-        return x
-
-
 class BatchNorm2d_Relu(nn.Module):
 
     def __init__(self, num_features, eps=1e-5, momentum=0.1, affine=True,

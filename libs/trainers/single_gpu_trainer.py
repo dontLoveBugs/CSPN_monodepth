@@ -29,13 +29,6 @@ class trainer(object):
         self.scheduler = get_schedular(optimizer, self.opt)
         self.criterion = get_criteria(self.opt)
 
-        # record file path
-        if self.opt.discretization > 1:
-            from dataloaders.utils import DepthCoefﬁcient
-            self.dc = DepthCoefﬁcient(min=1, max=91, N=opt.discretization)
-        else:
-            self.dc = None
-
         self.criterion = get_criteria(self.opt)
 
         self.output_directory = utils.get_save_path(self.opt)
