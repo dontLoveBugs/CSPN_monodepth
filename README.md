@@ -11,7 +11,13 @@ We re-implement CSPN using [Pixel-Adaptive Convolution](http://arxiv.org/abs/190
 The implementation of multi-gpus is based on [inplace abn](http://arxiv.org/abs/1712.02616).
 
 ### Results
-TODO
+Method | Implementation details |  rml  | rmse  | log10 | Delta1 | Delta2 | Delta3 
+ :-------| :------:  | :------: | :------: | :------: | :------: | :------: | :------: 
+ Paper   | batch size=24 epoch=40 | 0.016  | 0.117 | - | 0.992 | 0.999 | 1.000
+ Our_impl  | batch size=8 iteration=100k | 0.018 | 0.127 | 0.008 | 0.991 | 0.998 | 1.000
+ Our_CSPN  | batch size=8 iteration=100k | 0.018 | 0.127 | 0.008 | 0.991 | 0.998 | 1.000
+
+ ![Image text](https://github.com/dontLoveBugs/CSPN_monodepth/blob/master/result/nyu.PNG)
 
 ### Third Libs
 [inplace abn](https://github.com/mapillary/inplace_abn)
